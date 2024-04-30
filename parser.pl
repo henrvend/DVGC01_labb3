@@ -112,9 +112,36 @@ match_num([H|T]) :- char_type(H, digit), match_num(T).
 
 test_lexer(File) :- read_in(File, L), lexer(L,X), write(X).
 
-/*----------------------------------------------------------------------------*/
+/******************************************************************************/
+/* Tokens                                                                 */
+/******************************************************************************/
 
-prog       --> prog_head, var_part, stat_part.
+program     --> [256].
+input       --> [257].
+output      --> [258].
+var         --> [259].
+integer     --> [260].
+begin       --> [261].
+end         --> [262].
+boolean     --> [263].
+real        --> [264].
+id          --> [270].
+assign      --> [271].
+number      --> [272].
+minus       --> [273].
+openp       --> [40].
+closep      --> [41].
+mult        --> [42].
+plus        --> [43].
+comma       --> [44].
+fstop       --> [46].
+colon       --> [58].
+scolon      --> [59]. 
+
+/******************************************************************************/
+/* Program                                                          */
+/******************************************************************************/
+prog          --> prog_head, var_part, stat_part.
 
 /******************************************************************************/
 /* Program Header                                                             */
@@ -141,31 +168,6 @@ expr                --> term | term, plus, expr.
 term                --> factor | factor,  mult, term.
 factor              --> openp, expr, closep | operand.
 operand             --> id | number.
-/******************************************************************************/
-/* Tokens ish?                                                                 */
-/******************************************************************************/
-
-program     --> [256].
-input       --> [257].
-output      --> [258].
-var         --> [259].
-integer     --> [260].
-begin       --> [261].
-end         --> [262].
-boolean     --> [263].
-real        --> [264].
-id          --> [270].
-assign      --> [271].
-number      --> [272].
-minus       --> [273].
-openp       --> [40].
-closep      --> [41].
-mult        --> [42].
-plus        --> [43].
-comma       --> [44].
-fstop       --> [46].
-colon       --> [58].
-scolon      --> [59]. 
 
 /******************************************************************************/
 /*  TESTS                                                                     */
@@ -191,14 +193,14 @@ parsefunfiles :- parseFiles([ 'testfiles/fun1.pas',      'testfiles/fun2.pas',  
 parsesemfiles :- parseFiles([ 'testfiles/sem1.pas',      'testfiles/sem2.pas',      'testfiles/sem3.pas',
                               'testfiles/sem4.pas',      'testfiles/sem5.pas']).
 
-testall :- tell('parser.out'), write('Testing OK programs '), nl, 
-      nl, parseokfiles,
-      write('Testing a-z programs '), nl,
-      nl, parseazfiles, 
-      write('Testing fun programs '), nl,
-      nl, parsefunfiles,
-      write('Testing sem programs '), nl,
-      nl, parsesemfiles, told.
+testall :-  tell('parser.out'), write('Testing OK programs '), nl, 
+            nl, parseokfiles,
+            write('Testing a-z programs '), nl,
+            nl, parseazfiles, 
+            write('Testing fun programs '), nl,
+            nl, parsefunfiles,
+            write('Testing sem programs '), nl,
+            nl, parsesemfiles, told.
 
 
 parser(Tlist, Res) :- (prog(Tlist, Res), Res = [], write('Parse OK!'));  write('Parse Fail!').

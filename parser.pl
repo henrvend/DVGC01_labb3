@@ -1,3 +1,4 @@
+
 /******************************************************************************/
 /* From Programming in Prolog (4th Ed.) Clocksin & Mellish, Springer (1994)   */
 /* Chapter 5, pp 101-103 (DFR (140421) modified for input from a file)        */
@@ -12,7 +13,7 @@ read_in(File,[W|Ws]) :- see(File), get0(C),
 
 restsent(W, _, [])         :- W = -1.                /* added EOF handling */
 restsent(W, _, [])         :- lastword(W).
-restsent(_, C, [W1 | Ws ]) :- readword(C, W1, C1), restsent(W1, C1, Ws).
+restsent(_, C, [W1 | Ws ]) :- readword(C, W1, C1), restsent(W1, C1, Ws). /* Skicka till lexer? */
 
 /******************************************************************************/
 /* Read in a single word, given an initial character,                         */
@@ -20,22 +21,24 @@ restsent(_, C, [W1 | Ws ]) :- readword(C, W1, C1), restsent(W1, C1, Ws).
 /******************************************************************************/
 
 readword(C, W, _)  :- C = -1, W = C.                    /* added EOF handling */
+readword(C, W, C2) :- C = 58, get0(C1), readwordaux(C, W, C1, C2).
+readword(C, W, C2) :- C > 47, C < 58, name(W, [C]), get0(C2).
 readword(C, W, C1) :- single_character( C ), name(W, [C]), get0(C1).
-readword(C, W, C2) :-
+readword(C, W, C2) :- /* alphanum */
    in_word(C, NewC ),
    get0(C1),
    restword(C1, Cs, C2),
    name(W, [NewC|Cs]).
-
 readword(_, W, C2) :- get0(C1), readword(C1, W, C2).
+
+readwordaux(C, W, C1, C2) :- C1 = 61, name(W, [C, C1]), get0(C2).   /* Next is = -> := */
+readwordaux(C, W, C1, C2) :- C1 \= 61, name(W, [C]), C1 = C2.       /* Next not = -> : */
 
 restword(C, [NewC|Cs], C2) :-
    in_word(C, NewC),
    get0(C1),
    restword(C1, Cs, C2).
-
 restword(C, [ ], C).
-
 /******************************************************************************/
 /* These characters form words on their own                                   */
 /******************************************************************************/
@@ -49,6 +52,7 @@ single_character(59).                  /* ; */
 single_character(58).                  /* : */
 single_character(61).                  /* = */
 single_character(46).                  /* . */
+single_character(45).                  /* - */
 
 /******************************************************************************/
 /* These characters can appear within a word.                                 */
@@ -65,53 +69,150 @@ in_word(C, C) :- C>47, C<58.              /* 1 2 ... 9 */
 
 lastword('.').
 
-/******************************************************************************/
-/* added for demonstration purposes 140421, updated 150301                    */
-/* testa  - file input (characters + Pascal program)                          */
-/* testb  - file input as testa + output to file                              */
-/* ttrace - file input + switch on tracing (check this carefully)             */
-/******************************************************************************/
-
-testa   :- testread(['cmreader.txt', 'testok1.pas']).
-testb   :- tell('cmreader.out'), testread(['cmreader.txt', 'testok1.pas']), told.
-
-ttrace  :- trace, testread(['cmreader.txt']), notrace, nodebug.
-
-testread([]).
-testread([H|T]) :- nl, write('Testing C&M Reader, input file: '), write(H), nl,
-                   read_in(H,L), write(L), nl,
-                   nl, write(' end of C&M Reader test'), nl,
-                   testread(T).
 
 /******************************************************************************/
-/* end of program                                                             */
+/* end of cmreader                                                            */
+/******************************************************************************/
+/*----------------------------------------------------------------------------*/
+/******************************************************************************/
+/* LEXER                                                                      */
+/******************************************************************************/
+lexer([], []).
+lexer([H|T], [F|S]) :- match(H, F), lexer(T, S).
+
+match(L, F) :- L = 'program',   F is 256.
+match(L, F) :- L = 'input',     F is 257.
+match(L, F) :- L = 'output',    F is 258.
+match(L, F) :- L = 'var',       F is 259.
+match(L, F) :- L = 'integer',   F is 260.
+match(L, F) :- L = 'begin',     F is 261.
+match(L, F) :- L = 'end',       F is 262.
+match(L, F) :- L = 'boolean',   F is 263.
+match(L, F) :- L = 'real',      F is 264.
+match(L, F) :- L = '(',         F is 40.
+match(L, F) :- L = ')',         F is 41.
+match(L, F) :- L = '*',         F is 42.
+match(L, F) :- L = '+',         F is 43.
+match(L, F) :- L = ',',         F is 44.
+match(L, F) :- L = '.',         F is 46.
+match(L, F) :- L = ':',         F is 58.
+match(L, F) :- L = ';',         F is 59.
+match(L, F) :- L = ':=',        F is 271.
+
+match(L, F) :- name(L, [H|T]), char_type(H, alpha), match_id(T), F is 270.
+match(L, F) :- name(L, [H|T]), char_type(H, digit), match_num(T), F is 272.
+match(L, F) :- char_type(L, end_of_file),   F is 275.
+match(L, F) :- char_type(L, ascii),         F is 273.
+
+match_id([]).
+match_id([H|T]) :- char_type(H, alnum), match_id(T).
+
+match_num([]).
+match_num([H|T]) :- char_type(H, digit), match_num(T).
+
+test_lexer(File) :- read_in(File, L), lexer(L,X), write(X).
+
+/*----------------------------------------------------------------------------*/
+
+prog       --> prog_head, var_part, stat_part.
+
+/******************************************************************************/
+/* Program Header                                                             */
+/******************************************************************************/
+prog_head     --> program, id, openp, input, comma, output, closep, scolon.
+
+/******************************************************************************/
+/* Var_part                                                                   */
+/******************************************************************************/
+var_part            --> var, var_dec_list.
+var_dec_list        --> var_dec | var_dec, var_dec_list.
+var_dec             --> id_list, colon, typ, scolon.
+id_list             --> id | id, comma, id_list.
+typ                 --> integer | real | boolean.
+
+/******************************************************************************/
+/* Stat part                                                                  */
+/******************************************************************************/
+stat_part           --> begin, stat_list, end, fstop.
+stat_list           --> stat | stat, scolon, stat_list.
+stat                --> assign_stat.
+assign_stat         --> id, assign, expr.
+expr                --> term | term, plus, expr.
+term                --> factor | factor,  mult, term.
+factor              --> openp, expr, closep | operand.
+operand             --> id | number.
+/******************************************************************************/
+/* Tokens ish?                                                                 */
 /******************************************************************************/
 
+program     --> [256].
+input       --> [257].
+output      --> [258].
+var         --> [259].
+integer     --> [260].
+begin       --> [261].
+end         --> [262].
+boolean     --> [263].
+real        --> [264].
+id          --> [270].
+assign      --> [271].
+number      --> [272].
+minus       --> [273].
+openp       --> [40].
+closep      --> [41].
+mult        --> [42].
+plus        --> [43].
+comma       --> [44].
+fstop       --> [46].
+colon       --> [58].
+scolon      --> [59]. 
 
-lexer([ ], [ ]).
-lexer([H|T], [F|S]) :-match(H, F), lexer(T,S). 
+/******************************************************************************/
+/*  TESTS                                                                     */
+/******************************************************************************/
 
-match(L, F) :- L = 'program',    F is 256.
-match(L, F) :- L = 'input',      F is 257.
-match(L, F) :- L = 'output',     F is 258.
-match(L, F) :- L = 'var',        F is 259.
-match(L, F) :- L = 'integer',    F is 260.
-match(L, F) :- L = 'begin',      F is 261.
-match(L, F) :- L = 'end',        F is 262.
-match(L, F) :- L = 'boolean',    F is 263.
-match(L, F) :- L = 'real',       F is 264.
-match(L, F) :- L = '(',          F is 40.
-match(L, F) :- L = ')',          F is 41.
-match(L, F) :- L = '*',          F is 42.
-match(L, F) :- L = '+',          F is 43.
-match(L, F) :- L = ',',          F is 44.
-match(L, F) :- L = '.',          F is 46.
-match(L, F) :- L = ':',          F is 58.
-match(L, F) :- L = ';',          F is 59.
-match(L, F) :- L = ':=',         F is 271.
+parseokfiles :- parseFiles([  'testfiles/testok1.pas',   'testfiles/testok2.pas',   'testfiles/testok3.pas',
+                              'testfiles/testok4.pas',   'testfiles/testok5.pas',   'testfiles/testok6.pas',    
+                              'testfiles/testok7.pas']).
 
-match(L, F) :- name(L, [T|S]), char_type(T, digit), match_digit(S), F is 272.
+parseazfiles :- parseFiles([  'testfiles/testa.pas',     'testfiles/testb.pas',     'testfiles/testc.pas',
+                              'testfiles/testd.pas',     'testfiles/teste.pas',     'testfiles/testf.pas',
+                              'testfiles/testg.pas',     'testfiles/testh.pas',     'testfiles/testi.pas',      
+                              'testfiles/testj.pas',     'testfiles/testk.pas',     'testfiles/testl.pas',    
+                              'testfiles/testm.pas',     'testfiles/testn.pas',     'testfiles/testo.pas',  
+                              'testfiles/testp.pas',     'testfiles/testq.pas',     'testfiles/testr.pas',      
+                              'testfiles/tests.pas',     'testfiles/testt.pas',     'testfiles/testu.pas',
+                              'testfiles/testv.pas',     'testfiles/testw.pas',     'testfiles/testx.pas',      
+                              'testfiles/testy.pas',     'testfiles/testz.pas']).                        
 
-match_digit([ ]).
+parsefunfiles :- parseFiles([ 'testfiles/fun1.pas',      'testfiles/fun2.pas',      'testfiles/fun3.pas',
+                              'testfiles/fun4.pas',      'testfiles/fun5.pas']).
 
-match_digit([H|T]) :- char_type(H, digit), match_digit(T).
+parsesemfiles :- parseFiles([ 'testfiles/sem1.pas',      'testfiles/sem2.pas',      'testfiles/sem3.pas',
+                              'testfiles/sem4.pas',      'testfiles/sem5.pas']).
+
+testall :- tell('parser.out'), write('Testing OK programs '), nl, 
+      nl, parseokfiles,
+      write('Testing a-z programs '), nl,
+      nl, parseazfiles, 
+      write('Testing fun programs '), nl,
+      nl, parsefunfiles,
+      write('Testing sem programs '), nl,
+      nl, parsesemfiles, told.
+
+
+parser(Tlist, Res) :- (prog(Tlist, Res), Res = [], write('Parse OK!'));  write('Parse Fail!').
+
+parseFiles([]).
+parseFiles([H|T]) :- 
+write('Testing '), write(H), 
+nl, read_in(H,L), lexer(L, Tokens), write(L), 
+nl, write(Tokens), 
+nl, parser(Tokens, _), 
+nl, write(H), write(' end of parse'), 
+nl, 
+nl, parseFiles(T).
+
+/******************************************************************************/
+/* End of program                                                             */
+/******************************************************************************/

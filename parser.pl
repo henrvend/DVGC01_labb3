@@ -4,14 +4,13 @@
 /* Chapter 5, pp 101-103 (DFR (140421) modified for input from a file)        */
 /******************************************************************************/
 
-read_in(File,[W|Ws]) :- see(File), get0(C), 
-                        readword(C, W, C1), restsent(W, C1, Ws), nl, seen.
+read_in(File,[W|Ws]) :- see(File), get0(C), readword(C, W, C1), restsent(W, C1, Ws), nl, seen.
 
 /******************************************************************************/
 /* Given a word and the character after it, read in the rest of the sentence  */
 /******************************************************************************/
 
-restsent(W, _, [])         :- W = -1.                /* added EOF handling */
+restsent(W, _, [])         :- W = -1.                                    /* added EOF handling */
 restsent(W, _, [])         :- lastword(W).
 restsent(_, C, [W1 | Ws ]) :- readword(C, W1, C1), restsent(W1, C1, Ws). /* Skicka till lexer? */
 
@@ -20,40 +19,18 @@ restsent(_, C, [W1 | Ws ]) :- readword(C, W1, C1), restsent(W1, C1, Ws). /* Skic
 /* and remembering what character came after the word (NB!)                   */
 /******************************************************************************/
 
-/* Predikat för att hantera slutet av filen (EOF)*/
-readword(C, W, _) :- C = -1, W = C. /* Lägg till hantering av EOF */
-
-/* Predikat för att hantera ett enstaka tecken som '=' */
+readword(C, W, _)  :- C = -1, W = C.                                    /* added EOF handling */
 readword(C, W, C2) :- C = 58, get0(C1), readwordaux(C, W, C1, C2).
-
-/* Predikat för att läsa in ett ord som börjar med en siffra*/
 readword(C, W, C2) :- C > 47, C < 58, name(W, [C]), get0(C2).
-
-/* Predikat för att läsa in ett enskilt tecken*/
 readword(C, W, C1) :- single_character( C ), name(W, [C]), get0(C1).
-
-/* Predikat för att läsa in ett ord som börjar med en bokstav*/
-readword(C, W, C2) :- /* alphanum */
-   in_word(C, NewC ),          % Kontrollerar om C är en bokstav eller siffra och uppdaterar NewC
-   get0(C1),
-   restword(C1, Cs, C2),       % Läser in resten av ordet
-   name(W, [NewC|Cs]).
-
-/* Hanterar alla andra tecken*/
+readword(C, W, C2) :- in_word(C, NewC ), get0(C1), restword(C1, Cs, C2), name(W, [NewC|Cs]).
 readword(_, W, C2) :- get0(C1), readword(C1, W, C2).
 
-/* Hjälppredikat för att hantera tecken efter '='*/
-readwordaux(C, W, C1, C2) :- C1 = 61, name(W, [C, C1]), get0(C2). /* Nästa är = -> := */
-readwordaux(C, W, C1, C2) :- C1 \= 61, name(W, [C]), C1 = C2.     /* Nästa inte = -> : */
+readwordaux(C, W, C1, C2) :- C1 = 61, name(W, [C, C1]), get0(C2).   /* Next is = -> := */
+readwordaux(C, W, C1, C2) :- C1 \= 61, name(W, [C]), C1 = C2.       /* Next not = -> : */
 
-/* Hjälppredikat för att läsa in resten av ordet*/
-restword(C, [NewC|Cs], C2) :-
-   in_word(C, NewC),
-   get0(C1),
-   restword(C1, Cs, C2).
-restword(C, [], C).
-
-
+restword(C, [NewC|Cs], C2) :- in_word(C, NewC), get0(C1), restword(C1, Cs, C2).
+restword(C, [ ], C).
 /******************************************************************************/
 /* These characters form words on their own                                   */
 /******************************************************************************/
@@ -84,33 +61,15 @@ in_word(C, C) :- C>47, C<58.              /* 1 2 ... 9 */
 
 lastword('.').
 
-/******************************************************************************/
-/* added for demonstration purposes 140421, updated 150301                    */
-/* testa  - file input (characters + Pascal program)                          */
-/* testb  - file input as testa + output to file                              */
-/* ttrace - file input + switch on tracing (check this carefully)             */
-/******************************************************************************/
-
-
-testa   :- testread(['cmreader.txt', 'testok1.pas']).
-testb   :- tell('cmreader.out'), testread(['cmreader.txt', 'testok1.pas']), told.
-
-ttrace  :- trace, testread(['cmreader.txt']), notrace, nodebug.
-
-testread([]).
-testread([H|T]) :- nl, write('Testing C&M Reader, input file: '), write(H), nl,
-                   read_in(H,L), write(L), nl,
-                   nl, write(' end of C&M Reader test'), nl,
-                   testread(T).
 
 /******************************************************************************/
 /* end of cmreader                                                            */
 /******************************************************************************/
-
-
+/*----------------------------------------------------------------------------*/
 /******************************************************************************/
 /* LEXER                                                                      */
 /******************************************************************************/
+
 lexer([], []).
 lexer([H|T], [F|S]) :- match(H, F), lexer(T, S).
 
@@ -144,9 +103,10 @@ match_id([H|T]) :- char_type(H, alnum), match_id(T).
 match_num([]).
 match_num([H|T]) :- char_type(H, digit), match_num(T).
 
+test_lexer(File) :- read_in(File, L), lexer(L,X), write(X).
 
 /******************************************************************************/
-/* Tokens                                                                 */
+/* Terminals-facts                                                                */
 /******************************************************************************/
 
 program     --> [256].
@@ -171,39 +131,61 @@ fstop       --> [46].
 colon       --> [58].
 scolon      --> [59]. 
 
+
 /******************************************************************************/
-/* Program                                                          */
+/* Non-terminal facts                                                         */
 /******************************************************************************/
-prog                 --> prog_head, var_part, stat_part.
+/* Program                                                                    */
+/******************************************************************************/
+prog          --> prog_head, var_part, stat_part.
 
 /******************************************************************************/
 /* Program Header                                                             */
 /******************************************************************************/
-prog_head            --> program, id, openp, input, comma, output, closep, scolon.
+prog_head     --> program, id, openp, input, comma, output, closep, scolon.
 
 /******************************************************************************/
 /* Var_part                                                                   */
 /******************************************************************************/
-var_part             --> var, var_dec_list.
-var_dec_list         --> var_dec | var_dec, var_dec_list.
-var_dec              --> id_list, colon, typ, scolon.
-id_list              --> id | id, comma, id_list.
-typ                  --> integer | real | boolean.
+var_part            --> var, var_dec_list.
+var_dec_list        --> var_dec | var_dec, var_dec_list.
+var_dec             --> id_list, colon, typ, scolon.
+id_list             --> id | id, comma, id_list.
+typ                 --> integer | real | boolean.
 
 /******************************************************************************/
 /* Stat part                                                                  */
 /******************************************************************************/
-stat_part            --> begin, stat_list, end, fstop.
-stat_list            --> stat | stat, scolon, stat_list.
-stat                 --> assign_stat.
-assign_stat          --> id, assign, expr.
-expr                 --> term | term, plus, expr.
-term                 --> factor | factor,  mult, term.
-factor               --> openp, expr, closep | operand.
-operand              --> id | number.
+stat_part           --> begin, stat_list, end, fstop.
+stat_list           --> stat | stat, scolon, stat_list.
+stat                --> assign_stat.
+assign_stat         --> id, assign, expr.
+expr                --> term | term, plus, expr.
+term                --> factor | factor,  mult, term.
+factor              --> openp, expr, closep | operand.
+operand             --> id | number.
+
 
 /******************************************************************************/
-/*  TESTS                                                                     */
+/*  Parser                                                                   */
+/******************************************************************************/
+
+parser(Tlist, Res) :- (prog(Tlist, Res), Res = [], write('Parse OK!'));  write('Parse Fail!').
+
+parseFiles([]).
+parseFiles([H|T]) :- 
+write('Testing '), write(H), 
+nl, read_in(H,L), lexer(L, Tokens), write(L), 
+nl, write(Tokens), 
+nl, parser(Tokens, _), 
+nl, write(H), write(' end of parse'), 
+nl, 
+nl, parseFiles(T).
+
+
+
+/******************************************************************************/
+/*  Test                                                                    */
 /******************************************************************************/
 
 parseokfiles :- parseFiles([  'testfiles/testok1.pas',   'testfiles/testok2.pas',   'testfiles/testok3.pas',
@@ -236,17 +218,8 @@ testall :-  tell('parser.out'), write('Testing OK programs '), nl,
             nl, parsesemfiles, told.
 
 
-parser(Tlist, Res) :- (prog(Tlist, Res), Res = [], write('Parse OK!'));  write('Parse Fail!').
 
-parseFiles([]).
-parseFiles([H|T]) :- 
-write('Testing '), write(H), 
-nl, read_in(H,L), lexer(L, Tokens), write(L), 
-nl, write(Tokens), 
-nl, parser(Tokens, _), 
-nl, write(H), write(' end of parse'), 
-nl, 
-nl, parseFiles(T).
+
 
 /******************************************************************************/
 /* End of program                                                             */

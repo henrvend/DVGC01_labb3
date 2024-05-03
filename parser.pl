@@ -69,6 +69,24 @@ in_word(C, C) :- C>47, C<58.              /* 1 2 ... 9 */
 
 lastword('.').
 
+/******************************************************************************/
+/* added for demonstration purposes 140421, updated 150301                    */
+/* testa  - file input (characters + Pascal program)                          */
+/* testb  - file input as testa + output to file                              */
+/* ttrace - file input + switch on tracing (check this carefully)             */
+/******************************************************************************/
+
+
+testa   :- testread(['cmreader.txt', 'testok1.pas']).
+testb   :- tell('cmreader.out'), testread(['cmreader.txt', 'testok1.pas']), told.
+
+ttrace  :- trace, testread(['cmreader.txt']), notrace, nodebug.
+
+testread([]).
+testread([H|T]) :- nl, write('Testing C&M Reader, input file: '), write(H), nl,
+                   read_in(H,L), write(L), nl,
+                   nl, write(' end of C&M Reader test'), nl,
+                   testread(T).
 
 /******************************************************************************/
 /* end of cmreader                                                            */

@@ -73,7 +73,8 @@ lastword('.').
 /******************************************************************************/
 /* end of cmreader                                                            */
 /******************************************************************************/
-/*----------------------------------------------------------------------------*/
+
+
 /******************************************************************************/
 /* LEXER                                                                      */
 /******************************************************************************/
@@ -110,7 +111,6 @@ match_id([H|T]) :- char_type(H, alnum), match_id(T).
 match_num([]).
 match_num([H|T]) :- char_type(H, digit), match_num(T).
 
-test_lexer(File) :- read_in(File, L), lexer(L,X), write(X).
 
 /******************************************************************************/
 /* Tokens                                                                 */
@@ -141,33 +141,33 @@ scolon      --> [59].
 /******************************************************************************/
 /* Program                                                          */
 /******************************************************************************/
-prog          --> prog_head, var_part, stat_part.
+prog                 --> prog_head, var_part, stat_part.
 
 /******************************************************************************/
 /* Program Header                                                             */
 /******************************************************************************/
-prog_head     --> program, id, openp, input, comma, output, closep, scolon.
+prog_head            --> program, id, openp, input, comma, output, closep, scolon.
 
 /******************************************************************************/
 /* Var_part                                                                   */
 /******************************************************************************/
-var_part            --> var, var_dec_list.
-var_dec_list        --> var_dec | var_dec, var_dec_list.
-var_dec             --> id_list, colon, typ, scolon.
-id_list             --> id | id, comma, id_list.
-typ                 --> integer | real | boolean.
+var_part             --> var, var_dec_list.
+var_dec_list         --> var_dec | var_dec, var_dec_list.
+var_dec              --> id_list, colon, typ, scolon.
+id_list              --> id | id, comma, id_list.
+typ                  --> integer | real | boolean.
 
 /******************************************************************************/
 /* Stat part                                                                  */
 /******************************************************************************/
-stat_part           --> begin, stat_list, end, fstop.
-stat_list           --> stat | stat, scolon, stat_list.
-stat                --> assign_stat.
-assign_stat         --> id, assign, expr.
-expr                --> term | term, plus, expr.
-term                --> factor | factor,  mult, term.
-factor              --> openp, expr, closep | operand.
-operand             --> id | number.
+stat_part            --> begin, stat_list, end, fstop.
+stat_list            --> stat | stat, scolon, stat_list.
+stat                 --> assign_stat.
+assign_stat          --> id, assign, expr.
+expr                 --> term | term, plus, expr.
+term                 --> factor | factor,  mult, term.
+factor               --> openp, expr, closep | operand.
+operand              --> id | number.
 
 /******************************************************************************/
 /*  TESTS                                                                     */

@@ -20,10 +20,13 @@ restsent(_, C, [W1 | Ws ]) :- readword(C, W1, C1), restsent(W1, C1, Ws). /* Skic
 /******************************************************************************/
 
 readword(C, W, _)  :- C = -1, W = C.
-readword(C, W, C1) :- single_character( C ), name(W, [C]), get0(C1).      
+   
 readword(C, W, C2) :- C = 58, get0(C1), readwordaux(C, W, C1, C2).
 readword(C, W, C2) :- C > 47, C < 58, name(W, [C]), get0(C2).
 readword(C, W, C2) :- in_word(C, NewC ), get0(C1), restword(C1, Cs, C2), name(W, [NewC|Cs]).
+
+readword(C, W, C1) :- single_character( C ), name(W, [C]), get0(C1).  
+
 readword(_, W, C2) :- get0(C1), readword(C1, W, C2).
 
 readwordaux(C, W, C1, C2) :- C1 = 61, name(W, [C, C1]), get0(C2).   /* Next is = -> := */
@@ -188,11 +191,11 @@ nl, parseFiles(T).
 /*  Test                                                                    */
 /******************************************************************************/
 
-parseokfiles :- parseFiles([  'testfiles/testok1.pas',   'testfiles/testok2.pas',   'testfiles/testok3.pas',
+parseok :- parseFiles([  'testfiles/testok1.pas',   'testfiles/testok2.pas',   'testfiles/testok3.pas',
                               'testfiles/testok4.pas',   'testfiles/testok5.pas',   'testfiles/testok6.pas',    
                               'testfiles/testok7.pas']).
 
-parseazfiles :- parseFiles([  'testfiles/testa.pas',     'testfiles/testb.pas',     'testfiles/testc.pas',
+parseaz :- parseFiles([  'testfiles/testa.pas',     'testfiles/testb.pas',     'testfiles/testc.pas',
                               'testfiles/testd.pas',     'testfiles/teste.pas',     'testfiles/testf.pas',
                               'testfiles/testg.pas',     'testfiles/testh.pas',     'testfiles/testi.pas',      
                               'testfiles/testj.pas',     'testfiles/testk.pas',     'testfiles/testl.pas',    
@@ -202,23 +205,20 @@ parseazfiles :- parseFiles([  'testfiles/testa.pas',     'testfiles/testb.pas', 
                               'testfiles/testv.pas',     'testfiles/testw.pas',     'testfiles/testx.pas',      
                               'testfiles/testy.pas',     'testfiles/testz.pas']).                        
 
-parsefunfiles :- parseFiles([ 'testfiles/fun1.pas',      'testfiles/fun2.pas',      'testfiles/fun3.pas',
+parsefun :- parseFiles([ 'testfiles/fun1.pas',      'testfiles/fun2.pas',      'testfiles/fun3.pas',
                               'testfiles/fun4.pas',      'testfiles/fun5.pas']).
 
-parsesemfiles :- parseFiles([ 'testfiles/sem1.pas',      'testfiles/sem2.pas',      'testfiles/sem3.pas',
+parsesem :- parseFiles([ 'testfiles/sem1.pas',      'testfiles/sem2.pas',      'testfiles/sem3.pas',
                               'testfiles/sem4.pas',      'testfiles/sem5.pas']).
 
 testall :-  tell('parser.out'), write('Testing OK programs '), nl, 
-            nl, parseokfiles,
+            nl, parseok,
             write('Testing a-z programs '), nl,
-            nl, parseazfiles, 
+            nl, parseaz, 
             write('Testing fun programs '), nl,
-            nl, parsefunfiles,
+            nl, parsefun,
             write('Testing sem programs '), nl,
-            nl, parsesemfiles, told.
-
-
-
+            nl, parsesem, told.
 
 
 /******************************************************************************/

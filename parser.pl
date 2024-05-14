@@ -140,7 +140,6 @@ real        --> [264].
 id          --> [270].
 assign      --> [271].
 number      --> [272].
-minus       --> [273].
 openp       --> [40].
 closep      --> [41].
 mult        --> [42].
